@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html>
+<body>
+
+<canvas id="canvas" width="600" height="600"
+style="border:1px solid #c3c3c3;">
+Your browser does not support the canvas element.
+</canvas>
+
+</body>
+</html>
+
+<script type="text/javascript">
+
+	class LinkedListNode {
+		constructor(value, next=null){
+			this.val = value
+			this.nextNode = next
+		}
+		set next(n) {
+			this.nextNode = n
+		}
+	}
+	class Vector {
+		constructor(xc, yc){
+			this.xc = xc;
+			this.yc = yc;
+		}
+		static multiply(v, constant){
+			return new Vector(v.xc * constant, v.yc * constant);
+		}
+		static add(v1, v2){
+			return new Vector(v1.xc+v2.xc, v1.yc+v2.yc);
+		}
+	}
+
+	class Obstacle {
+		constructor(v1, v2, speed = 1){
+			this.v1 = v1
+			this.v2 = v2
+			this.speed = speed
+			this._color = "rgb("+Math.floor(Math.random()*255).toString()+","+Math.floor(Math.random()*255).toString()+","+Math.floor(Math.random()*255).toString()+")";
+		}
+		draw(ctx) {
+			ctx.fillStyle = this._color;
+			ctx.beginPath();
+		    ctx.rect(this.v1.xc, this.v1.yc, this.v2.xc - this.v1.xc, this.v2.yc-this.v1.yc);
+		    ctx.fill();
+		}
+		update(){
+			this.v1.xc = this.v1.xc - this.speed;
+			this.v2.xc = this.v2.xc - this.speed;
+		}
+	}
+
+	const GRAVITY = new Vector(0, 800);
+	const REFRESH_DELAY = 41; //milli second
+
+	class Ball {
+		constructor(p, v, ballSize=20){
+			this.p = p;
+			this.v = v;
+			this.ballSize = ballSize;
+			this.color = "rgb("+Math.floor(Math.random()*255).toString()+","+Math.floor(Math.random()*255).toString()+","+Math.floor(Math.random()*255).toString()+")";
+		}
+		draw(ctx){
+			ctx.fillStyle = this.color;
+		    ctx.beginPath();
+			ctx.arc(this.p.xc, this.p.yc, this.ballSize, 0, 2 * Math.PI);
+			ctx.fill();
+		}
+
+		hasCollidedWith(){
+			// game over when collided with left wall 
+			if(this.p.xc - this.ballSize <= 0){
+				gameOver = true;
+				return;
+			}
+			let tmp = _root
+			while(tmp != null){
+				let obstacle = tmp.val;
+				if(this.p.xc >= obstacle.v1.xc && this.p.xc <= obstacle.v2.xc){
+					if(this.p.yc + this.ballSize >= obstacle.v1.yc && this.p.yc - this.ballSize < obstacle.v1.yc){
+						this.p.yc = obstacle.v1.yc - this.ballSize;
+						return "bounce";		
+					}
+					if(this.p.yc - this.ballSize <= obstacle.v2.yc && this.p.yc + this.ballSize > obstacle.v2.yc){
+						this.p.yc = obstacle.v2.yc + this.ballSize;
+						return "bounce";
+					}
+					
+				}
+
+				if(this.p.yc >= obstacle.v1.yc && this.p.yc <= obstacle.v2.yc){
+					if(this.p.xc + this.ballSize >= obstacle.v1.xc && this.p.xc - this.ballSize < obstacle.v1.xc){
+						this.p.xc = obstacle.v1.xc - this.ballSize;
+						return "collide";
+					}
+					if(this.p.xc - this.ballSize <= obstacle.v2.xc && this.p.xc + this.ballSize > obstacle.v2.xc){
+						this.p.xc = obstacle.v2.xc + this.ballSize;
+						return "collide";
+					}
+					
+				}
+				tmp = tmp.nextNode;
+			}
+			return null;
+		}
+
+		update(){
+			var u = this.v;
+			this.v = Vector.add(u, Vector.multiply(GRAVITY,REFRESH_DELAY/1000));
+			var d = Vector.add(Vector.multiply(u, REFRESH_DELAY/1000), Vector.multiply(GRAVITY, 0.5 * (REFRESH_DELAY/1000)**2));
+			this.p = Vector.add(this.p, d);
+			var obstacle = this.hasCollidedWith();
+			if(obstacle == "bounce"){
+				this.v.yc =  -0.9*this.v.yc;
+				this.v.xc =  0.8*this.v.xc;
+			}
+			else if(obstacle == "collide"){
+				this.v.yc =  0.9*this.v.yc;
+				this.v.xc =  -0.8*this.v.xc;
+			}
+		}
+
+		jump() {
+			if(this.p.yc < capHeight) return;
+			let v = Math.sqrt(2 * GRAVITY.yc * (height - capHeight));
+			if(this.v.yc <= v){
+				this.v.yc -= 200;
+			}
+		}
+	}
+
+	var canvas = document.getElementById("canvas");
+	var context = canvas.getContext("2d");
+
+	var height = canvas.height;
+	//canvas.addEventListener("click", canvasClicked, false);
+	window.addEventListener('keydown', handleKeyPress, false);
+	var balls = new Array();
+	balls.push(new Ball(new Vector(100, 500), new Vector(300, 0)));
+
+	var up = new LinkedListNode(new Obstacle(new Vector(-30, -30), new Vector(700, 0), 0));
+	var below = new LinkedListNode(new Obstacle(new Vector(0, 600), new Vector(600, 600), 0));
+	var left = new LinkedListNode(new Obstacle(new Vector(-30, -30), new Vector(0, 600), 0));
+	var right = new LinkedListNode(new Obstacle(new Vector(600, 0), new Vector(600, 600), 0));
+	var rootObstacle1 = new LinkedListNode(new Obstacle(new Vector(600, 550), new Vector(650, 600)));
+	var rootObstacle2 = new LinkedListNode(new Obstacle(new Vector(675, 300), new Vector(850, 400)));
+	var rootObstacle3 = new LinkedListNode(new Obstacle(new Vector(895, 550), new Vector(995, 600)));
+	var rootObstacle4 = new LinkedListNode(new Obstacle(new Vector(1000, 200), new Vector(1200, 250)));
+	var rootObstacle5 = new LinkedListNode(new Obstacle(new Vector(1250, 440), new Vector(1400, 500)));
+	up.next = below
+	below.next = left
+	left.next = right
+	right.next = rootObstacle1
+	rootObstacle1.next = rootObstacle2
+	rootObstacle2.next = rootObstacle3
+	rootObstacle3.next = rootObstacle4
+	rootObstacle4.next = rootObstacle5
+	var _root = up
+	var _last = rootObstacle5
+	var capHeight = 400;
+	var score = 0;
+	var gameOver = false;
+	var speed = 1;
+	var increment = 0.25;
+	display();
+	updateScore();
+	// function canvasClicked(e){
+	// 	var x = e.offsetX;
+	// 	var y = e.offsetY;
+	// 	balls.push(new Ball(new Vector(x, y), new Vector(300, 0)));
+	// }
+
+	function handleKeyPress(e) {
+		let pressed = e.keyCode;
+		switch(pressed){
+			case 32: {
+				for(var i=0; i< balls.length;i++){
+					let ball = balls[i];
+					ball.jump();
+				}
+				break;
+			}
+			case 39: {
+				for(var i=0; i< balls.length;i++){
+					let ball = balls[i];
+					ball.v.xc +=  50;
+				}
+				break;
+			}
+			case 37:{
+				for(var i=0; i< balls.length;i++){
+					let ball = balls[i];
+					ball.v.xc -=  50;
+				}
+				break;
+			}
+		}
+	}
+
+	function updateObstaclesSpeed(){
+		let iterator = rootObstacle1;
+		while(iterator != null){
+			iterator.val.speed = speed + increment; 
+			iterator = iterator.nextNode;
+		}
+	}
+
+	function updateObstacles(){
+		//remove obstacles outside left wall
+		let removed = 0;
+		while(rootObstacle1 != null && rootObstacle1.val.v2.xc <= 0){
+			rootObstacle1 = rootObstacle1.nextNode;
+			removed += 1;
+			if(!gameOver){
+				score += 1;
+			}
+		}
+		right.next = rootObstacle1;
+		//add more obstacles
+		while(removed != 0){
+			let x = 800 + 50*speed + Math.random() * 50;
+			let y = Math.random() * 400 + 100;
+			let height = Math.random() * 200 + 50;
+			let width = Math.random() * 100 + 50;
+			if(!gameOver){
+				speed += increment;
+				updateObstaclesSpeed();
+			}
+			let newObstacle = new Obstacle(new Vector(x, y), new Vector(x + width, y + height), speed);
+			let newNode = new LinkedListNode(newObstacle);
+			_last.next = newNode;
+			_last = newNode;
+			removed -= 1;
+		}
+	}
+
+	function updateScore(){
+		context.font = "20px Georgia";
+		context.fillStyle = "black";
+		context.fillText("Score = " + score, 450, 50);
+	}
+	// function addObstacles(){
+	// 	generate = Math.random();
+	// 	if(generate < 0.99){
+	// 		return;
+	// 	}
+
+	// 	let r = parseInt(Math.random()*randomObstacles.length);
+	// 	let newObstacle = new Obstacle(new Vector(randomObstacles[r][0], randomObstacles[r][1]), new Vector(randomObstacles[r][2], randomObstacles[r][3]))
+	// 	let newNode = new LinkedListNode(newObstacle);
+	// 	_last.next = newNode;
+	// 	_last = newNode;
+	// }
+	function display(){
+		setTimeout(function() {
+			context.clearRect(0, 0, height, height);
+			updateScore();
+			tmp = _root;
+			while(tmp != null){
+				tmp.val.draw(context);
+				tmp.val.update();
+				tmp = tmp.nextNode;
+			}
+			if(gameOver == true){
+				context.font = "50px Georgia";
+				context.fillStyle = "rgb("+Math.floor(Math.random()*255).toString()+","+Math.floor(Math.random()*255).toString()+","+Math.floor(Math.random()*255).toString()+")";
+				context.fillText("GAME OVER !!!", height/2-150, height/2-100);
+				context.fillText("SCORE = " + score, height/2-90, height/2);
+			}else{
+				for(var i=0; i< balls.length;i++){
+					let ball = balls[i];
+					ball.draw(context);
+					ball.update();
+				}
+			}
+			updateObstacles();
+			display();
+		}, REFRESH_DELAY);
+	}
+
+
+
+</script>
